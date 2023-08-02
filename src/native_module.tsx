@@ -7,6 +7,8 @@ const LINKING_ERROR =
   '- You are not using Expo managed workflow\n';
 
 export interface Device {
+  readonly name: string;
+  readonly type: 'bluetooth' | 'usb';
   readonly deviceId: number;
   readonly vendorId: number;
   readonly productId: number;

@@ -25,6 +25,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
 
 @ReactModule(name = SerialportBluetoothModule.NAME)
 public class SerialportBluetoothModule extends ReactContextBaseJavaModule implements EventSender{
@@ -49,12 +50,29 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
   public void list(Promise promise) {
       WritableArray devices = Arguments.createArray();
       UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-      for (UsbDevice device : usbManager.getDeviceList().values()) {
-          WritableMap d = Arguments.createMap();
-          d.putInt("deviceId", device.getDeviceId());
-          d.putInt("vendorId", device.getVendorId());
-          d.putInt("productId", device.getProductId());
-          devices.pushMap(d);
+      List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
+      HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
+      // for (UsbDevice driver : usbSerialDriverList) {
+      //     WritableMap d = Arguments.createMap();
+      //     d.putInt("deviceId", findDevice());
+      //     d.putInt("vendorId", driver.getVendorId());
+      //     d.putInt("productId", driver.getProductId());
+      //     devices.pushMap(d);
+      // }
+      for (UsbSerialDriver driver : usbSerialDriverList) {
+        WritableMap deviceData = Arguments.createMap();
+        deviceData.putString("name", driver.getDevice().getDeviceName());
+        deviceData.putInt("vendorId", driver.getDevice().getVendorId());
+        deviceData.putInt("productId", driver.getDevice().getProductId());
+
+        for (Map.Entry<String, UsbDevice> usbDeviceEntry : usbDevices.entrySet()) {
+            UsbDevice usbDevice = usbDeviceEntry.getValue();
+            if (driver.getDevice().getDeviceName().equals(usbDevice.getDeviceName())) {
+              deviceData.putString("type", "usb");
+              deviceData.putInt("deviceId", usbDevice.getDeviceId());
+              devices.pushMap(deviceData);
+            }
+        }
       }
       promise.resolve(devices);
   }
@@ -102,6 +120,89 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
     });
   }
 
+  @ReactMethod
+  public void open(int deviceId, int baudRate, int dataBits, int stopBits, int parity, Promise promise) {
+      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+      if (wrapper != null) {
+          promise.resolve(deviceId);
+          return;
+      }
+
+      UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+      UsbDevice device = findDevice(deviceId);
+      if (device == null) {
+          promise.reject("1", "device not found");
+          return;
+      }
+
+      UsbSerialDriver driver = UsbSerialProber.getDefaultProber().probeDevice(device);
+      if (driver == null) {
+          promise.reject("2", "no driver for device");
+          return;
+      }
+      if (driver.getPorts().size() < 0) {
+          promise.reject("3", "not enough ports at device");
+          return;
+      }
+
+      UsbDeviceConnection connection = usbManager.openDevice(driver.getDevice());
+      if(connection == null) {
+          if (!usbManager.hasPermission(driver.getDevice())) {
+              promise.reject("4", "connection failed: permission denied");
+          } else {
+              promise.reject("5", "connection failed: open failed");
+          }
+          return;
+      }
+
+      UsbSerialPort port = driver.getPorts().get(0);
+      try {
+          port.open(connection);
+          port.setParameters(baudRate, dataBits, stopBits, parity);
+      } catch (IOException e) {
+          try {
+                port.close();
+          } catch (IOException ignored) {}
+          promise.reject("6", "connection failed", e);
+          return;
+      }
+
+      wrapper = new SerialportDevice(deviceId, port, this);
+      usbSerialPorts.put(deviceId, wrapper);
+      promise.resolve(deviceId);
+  }
+
+  @ReactMethod
+  public void send(int deviceId, String hexStr, Promise promise) {
+      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+      if (wrapper == null) {
+          promise.reject("0", "device not open");
+          return;
+      }
+
+      byte[] data = hexStringToByteArray(hexStr);
+      try {
+          wrapper.send(data);
+          promise.resolve(null);
+      } catch (IOException e) {
+          promise.reject("0", "send failed", e);
+          return;
+      }
+  }
+
+  @ReactMethod
+  public void close(int deviceId, Promise promise) {
+      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+      if (wrapper == null) {
+          promise.reject("7", "serial port not open or closed");
+          return;
+      }
+
+      wrapper.close();
+      usbSerialPorts.remove(deviceId);
+      promise.resolve(null);
+  }
+
   private UsbDevice findDevice(int deviceId) {
     UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
     for (UsbDevice device : usbManager.getDeviceList().values()) {
@@ -111,6 +212,16 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
     }
 
     return null;
+  }
+
+  public static byte[] hexStringToByteArray(String s) {
+    int len = s.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+        data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+            + Character.digit(s.charAt(i + 1), 16));
+    }
+    return data;
   }
 
   private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
