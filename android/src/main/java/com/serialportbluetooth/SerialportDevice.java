@@ -36,7 +36,7 @@ public class SerialportDevice implements SerialInputOutputManager.Listener {
 
   public void onNewData(byte[] data) {
       WritableMap event = Arguments.createMap();
-      String hex = UsbSerialportForAndroidModule.bytesToHex(data);
+      String hex = SerialportBluetoothModule.bytesToHex(data);
       event.putInt("deviceId", this.deviceId);
       event.putString("data", hex);
       sender.sendEvent(DataReceivedEvent, event);
@@ -65,7 +65,7 @@ public class SerialportDevice implements SerialInputOutputManager.Listener {
   }
 
 
-  public String getDeviceId() {
+  public int getDeviceId() {
       return deviceId;
   }
 }
