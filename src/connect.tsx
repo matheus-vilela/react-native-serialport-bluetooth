@@ -26,9 +26,33 @@ export default class Connect {
     return SerialportBluetooth.send(this.deviceId, hexStr);
   }
 
+  private processHexString(hexString: string) {
+    // Divide a hex string em pares
+    const pairs = hexString.match(/.{1,2}/g);
+    // Filtra os pares que não são quebras de linha
+    const filteredPairs = pairs?.filter(
+      (pair: string) => pair !== '0D' && pair !== '0A'
+    );
+    // Converte os pares de volta para caracteres e concatena em uma string
+    const newString = filteredPairs
+      ?.map((pair: string) => String.fromCharCode(parseInt(pair, 16)))
+      .join('');
+    return newString;
+  }
+
   onReceived(listener: Listener) {
     const listenerProxy = (event: EventData) => {
-      listener(event);
+      this.buffer += event.data.toUpperCase();
+      if (event.data.includes('0D')) {
+        const data = this.processHexString(this.buffer)?.trim() || '';
+        if (data) {
+          listener({
+            deviceId: event.deviceId,
+            data: data,
+          });
+        }
+        this.buffer = '';
+      }
     };
 
     this.listeners.push(listenerProxy);
