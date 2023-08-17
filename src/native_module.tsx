@@ -24,7 +24,9 @@ interface SerialportBluetoothAPI {
     baudRate: number,
     dataBits: number,
     stopBits: number,
-    parity: number
+    parity: number,
+    readWaitMillis: number,
+    writeWaitMillis: number
   ): Promise<number>;
   send(deviceId: number, hexStr: string): Promise<null>;
   close(deviceId: number): Promise<null>;

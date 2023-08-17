@@ -10,11 +10,11 @@ import com.hoho.android.usbserial.util.SerialInputOutputManager;
 import android.util.Log;
 
 public class SerialportDevice implements SerialInputOutputManager.Listener {
-  private static final int WRITE_WAIT_MILLIS = 2000;
-  private static final int READ_WAIT_MILLIS = 2000;
 
   private static final String DataReceivedEvent = "serialportDataReceived";
 
+  private int WRITE_WAIT_MILLIS = 200;
+  private int READ_WAIT_MILLIS = 200;
   private int deviceId;
   private UsbSerialPort port;
   private EventSender sender;
@@ -22,11 +22,13 @@ public class SerialportDevice implements SerialInputOutputManager.Listener {
   private SerialInputOutputManager ioManager;
 
 
-  public SerialportDevice(int deviceId, UsbSerialPort port, EventSender sender) {
+  public SerialportDevice(int deviceId, UsbSerialPort port,int readWaitMillis, int writeWaitMillis, EventSender sender) {
     this.deviceId = deviceId;
     this.port = port;
     this.sender = sender;
     this.ioManager = new SerialInputOutputManager(port, this);
+    this.READ_WAIT_MILLIS = readWaitMillis;
+    this.WRITE_WAIT_MILLIS = writeWaitMillis;
     ioManager.start();
   }
 

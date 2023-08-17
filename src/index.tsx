@@ -12,6 +12,8 @@ export interface OpenOptions {
   parity: Parity;
   dataBits: number;
   stopBits: number;
+  readWaitMillis?: number;
+  writeWaitMillis?: number;
 }
 
 export enum Parity {
@@ -49,7 +51,9 @@ const defaultManager: Manager = {
       options.baudRate,
       options.dataBits,
       options.stopBits,
-      options.parity
+      options.parity,
+      options.readWaitMillis || 200,
+      options.writeWaitMillis || 200
     );
     return new Connect(deviceId, eventEmitter);
   },

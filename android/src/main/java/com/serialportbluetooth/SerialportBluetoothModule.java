@@ -121,7 +121,7 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
   }
 
   @ReactMethod
-  public void open(int deviceId, int baudRate, int dataBits, int stopBits, int parity, Promise promise) {
+  public void open(int deviceId, int baudRate, int dataBits, int stopBits, int parity,int readWaitMillis, int writeWaitMillis, Promise promise) {
       SerialportDevice wrapper = usbSerialPorts.get(deviceId);
       if (wrapper != null) {
           promise.resolve(deviceId);
@@ -167,7 +167,7 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
           return;
       }
 
-      wrapper = new SerialportDevice(deviceId, port, this);
+      wrapper = new SerialportDevice(deviceId, port, readWaitMillis, writeWaitMillis, this);
       usbSerialPorts.put(deviceId, wrapper);
       promise.resolve(deviceId);
   }
