@@ -5,8 +5,6 @@ import SerialportBluetooth, { type Device } from './native_module';
 export type { EventData, Listener } from './connect';
 export type { Connect, Device };
 
-const eventEmitter = new NativeEventEmitter(NativeModules.SerialportBluetooth);
-
 export interface OpenOptions {
   baudRate: number;
   parity: Parity;
@@ -46,7 +44,9 @@ const defaultManager: Manager = {
   },
 
   async open(deviceId: number, options: OpenOptions): Promise<Connect> {
-    await SerialportBluetooth.open(
+    if (Platform.OS !== 'android')
+      throw new Error(`Not support ${Platform.OS}`);
+    return SerialportBluetooth.open(
       deviceId,
       options.baudRate,
       options.dataBits,
@@ -54,8 +54,13 @@ const defaultManager: Manager = {
       options.parity,
       options.readWaitMillis || 200,
       options.writeWaitMillis || 200
-    );
-    return new Connect(deviceId, eventEmitter);
+    ).then(() => {
+      const eventEmitter = new NativeEventEmitter(
+        NativeModules.SerialportBluetooth
+      );
+
+      return Promise.resolve(new Connect(deviceId, eventEmitter));
+    });
   },
 };
 

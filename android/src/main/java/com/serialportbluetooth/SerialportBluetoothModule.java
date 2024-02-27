@@ -49,32 +49,36 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
   @ReactMethod
   public void list(Promise promise) {
       WritableArray devices = Arguments.createArray();
-      UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-      List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
-      HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
-      // for (UsbDevice driver : usbSerialDriverList) {
-      //     WritableMap d = Arguments.createMap();
-      //     d.putInt("deviceId", findDevice());
-      //     d.putInt("vendorId", driver.getVendorId());
-      //     d.putInt("productId", driver.getProductId());
-      //     devices.pushMap(d);
-      // }
-      for (UsbSerialDriver driver : usbSerialDriverList) {
-        WritableMap deviceData = Arguments.createMap();
-        deviceData.putString("name", driver.getDevice().getDeviceName());
-        deviceData.putInt("vendorId", driver.getDevice().getVendorId());
-        deviceData.putInt("productId", driver.getDevice().getProductId());
+      try{
+        UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
+        HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
+        // for (UsbDevice driver : usbSerialDriverList) {
+        //     WritableMap d = Arguments.createMap();
+        //     d.putInt("deviceId", findDevice());
+        //     d.putInt("vendorId", driver.getVendorId());
+        //     d.putInt("productId", driver.getProductId());
+        //     devices.pushMap(d);
+        // }
+        for (UsbSerialDriver driver : usbSerialDriverList) {
+          WritableMap deviceData = Arguments.createMap();
+          deviceData.putString("name", driver.getDevice().getDeviceName());
+          deviceData.putInt("vendorId", driver.getDevice().getVendorId());
+          deviceData.putInt("productId", driver.getDevice().getProductId());
 
-        for (Map.Entry<String, UsbDevice> usbDeviceEntry : usbDevices.entrySet()) {
-            UsbDevice usbDevice = usbDeviceEntry.getValue();
-            if (driver.getDevice().getDeviceName().equals(usbDevice.getDeviceName())) {
-              deviceData.putString("type", "usb");
-              deviceData.putInt("deviceId", usbDevice.getDeviceId());
-              devices.pushMap(deviceData);
-            }
+          for (Map.Entry<String, UsbDevice> usbDeviceEntry : usbDevices.entrySet()) {
+              UsbDevice usbDevice = usbDeviceEntry.getValue();
+              if (driver.getDevice().getDeviceName().equals(usbDevice.getDeviceName())) {
+                deviceData.putString("type", "usb");
+                deviceData.putInt("deviceId", usbDevice.getDeviceId());
+                devices.pushMap(deviceData);
+              }
+          }
         }
+        promise.resolve(devices);
+      } catch (Exception e) {
+        promise.resolve(devices);
       }
-      promise.resolve(devices);
   }
 
   @ReactMethod

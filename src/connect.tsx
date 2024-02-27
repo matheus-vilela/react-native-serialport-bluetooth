@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import EventEmitter from 'react-native/Libraries/vendor/emitter/EventEmitter';
 import SerialportBluetooth from './native_module';
 
@@ -14,7 +15,7 @@ export default class Connect {
   deviceId: number;
   private eventEmitter: EventEmitter;
   private listeners: Listener[];
-  buffer = '';
+  // buffer = '';
 
   constructor(deviceId: number, eventEmitter: EventEmitter) {
     this.deviceId = deviceId;
@@ -26,32 +27,19 @@ export default class Connect {
     return SerialportBluetooth.send(this.deviceId, hexStr);
   }
 
-  private processHexString(hexString: string) {
-    // Divide a hex string em pares
-    const pairs = hexString.match(/.{1,2}/g);
-    // Filtra os pares que não são quebras de linha
-    const filteredPairs = pairs?.filter(
-      (pair: string) => pair !== '0D' && pair !== '0A'
-    );
-    // Converte os pares de volta para caracteres e concatena em uma string
-    const newString = filteredPairs
-      ?.map((pair: string) => String.fromCharCode(parseInt(pair, 16)))
-      .join('');
-    return newString;
-  }
-
   onReceived(listener: Listener) {
+    let buffer = '';
+
     const listenerProxy = (event: EventData) => {
-      this.buffer += event.data.toUpperCase();
-      if (event.data.includes('0D')) {
-        const data = this.processHexString(this.buffer)?.trim() || '';
-        if (data) {
-          listener({
-            deviceId: event.deviceId,
-            data: data,
-          });
-        }
-        this.buffer = '';
+      buffer += event.data.toUpperCase();
+      const pairs = event.data.toUpperCase().match(/.{1,2}/g);
+
+      if (pairs?.some((i) => i === '0D')) {
+        listener({
+          deviceId: event.deviceId,
+          data: Buffer.from(buffer, 'hex').toString('utf-8'),
+        });
+        buffer = '';
       }
     };
 
