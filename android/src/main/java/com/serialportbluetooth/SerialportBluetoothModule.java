@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
 
@@ -33,10 +34,16 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
   private static final String INTENT_ACTION_GRANT_USB = BuildConfig.LIBRARY_PACKAGE_NAME + ".GRANT_USB";
   private final ReactApplicationContext reactContext;
   private final Map<Integer, SerialportDevice> usbSerialPorts = new HashMap<Integer, SerialportDevice>();
+  private SunmiRfidCardReader sunmiRfidCardReader = null;
 
   public SerialportBluetoothModule(ReactApplicationContext reactContext) {
     super(reactContext);
     this.reactContext = reactContext;
+
+    if (this.isSunmiP2B()) {
+      this.sunmiRfidCardReader = new SunmiRfidCardReader(reactContext);
+      this.sunmiRfidCardReader.bindService();
+    }
   }
 
   @Override
@@ -44,7 +51,6 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
   public String getName() {
     return NAME;
   }
-
 
   @ReactMethod
   public void list(Promise promise) {
@@ -240,4 +246,16 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
         return new String(hexChars);
   }
 
+  @ReactMethod
+  public void readRfidCard(Promise promise) {
+    if (!this.isSunmiP2B()) {
+      promise.reject("500", "Not Sunmi P2 to read RFID via NFC device.");
+      return;
+    }
+    this.sunmiRfidCardReader.searchCard(promise);
+  }
+
+  private boolean isSunmiP2B() {
+    return Build.MODEL.equalsIgnoreCase("P2-B");
+  }
 }

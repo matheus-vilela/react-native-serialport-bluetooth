@@ -27,6 +27,7 @@ export interface Manager {
   tryRequestPermission(deviceId: number): Promise<boolean>;
   hasPermission(deviceId: number): Promise<boolean>;
   open(deviceId: number, options: OpenOptions): Promise<Connect>;
+  readRfidCard(): Promise<string>;
 }
 
 const defaultManager: Manager = {
@@ -61,6 +62,10 @@ const defaultManager: Manager = {
 
       return Promise.resolve(new Connect(deviceId, eventEmitter));
     });
+  },
+
+  readRfidCard(): Promise<string> {
+    return SerialportBluetooth.readRfidCard();
   },
 };
 

@@ -1,18 +1,26 @@
 import * as React from 'react';
 
-import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'react-native-serialport-bluetooth';
+import { StyleSheet, View, Text, Button } from 'react-native';
+import { SerialBluetoothManager } from 'react-native-serialport-bluetooth';
 
 export default function App() {
-  const [result, setResult] = React.useState<number | undefined>();
+  const [rfid, setRfid] = React.useState<string>('');
 
-  React.useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
+  const readRfidCard = async () => {
+    try {
+      setRfid('Waiting card...');
+      const rfid = await SerialBluetoothManager.readRfidCard();
+      setRfid(rfid);
+    } catch (e) {
+      setRfid('Erro!');
+      console.error(e);
+    }
+  };
 
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Text style={styles.text}>RFID found: '{rfid}'</Text>
+      <Button title="Search RFID" onPress={readRfidCard} />
     </View>
   );
 }
@@ -27,5 +35,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     marginVertical: 20,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 20,
   },
 });
