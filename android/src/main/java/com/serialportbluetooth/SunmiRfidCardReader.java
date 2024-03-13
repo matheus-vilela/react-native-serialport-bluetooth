@@ -14,7 +14,6 @@ public class SunmiRfidCardReader {
   private final String tag = "SunmiRfidCardReader";
   private final ReactApplicationContext reactContext;
   private final SunmiPayKernel payKernel;
-  private ReadCardOptV2 readCardOptV2;
 
   public SunmiRfidCardReader(ReactApplicationContext reactContext) {
     this.reactContext = reactContext;
@@ -24,14 +23,10 @@ public class SunmiRfidCardReader {
   public void bindService() {
     payKernel.initPaySDK(reactContext, new ConnectCallback() {
       @Override
-      public void onConnectPaySDK() {
-        readCardOptV2 = payKernel.mReadCardOptV2;
-      }
+      public void onConnectPaySDK() {}
 
       @Override
-      public void onDisconnectPaySDK() {
-        readCardOptV2 = null;
-      }
+      public void onDisconnectPaySDK() {}
     });
   }
 
@@ -39,8 +34,8 @@ public class SunmiRfidCardReader {
     Log.d(tag, "Search card!");
 
     try {
-      readCardOptV2.cancelCheckCard();
-      readCardOptV2.checkCard(
+      payKernel.mReadCardOptV2.cancelCheckCard();
+      payKernel.mReadCardOptV2.checkCard(
         AidlConstants.CardType.MIFARE.getValue(),
         new CheckCardCallbackV2.Stub() {
           @Override
@@ -133,8 +128,7 @@ public class SunmiRfidCardReader {
     }
 
     String hexResult = nova.toString();
-    if (hexResult == null)
-      hexResult = "FFFFFF";
+    if (hexResult == null) hexResult = "FFFFFF";
     long converted = Long.parseLong(hexResult, 16);
 
     String id = Long.toString(converted);
