@@ -56,11 +56,12 @@ const defaultManager: Manager = {
       options.readWaitMillis || 200,
       options.writeWaitMillis || 200
     ).then(() => {
-      const eventEmitter = new NativeEventEmitter(
-        NativeModules.SerialportBluetooth
+      return Promise.resolve(
+        new Connect(
+          deviceId,
+          new NativeEventEmitter(NativeModules.SerialportBluetooth)
+        )
       );
-
-      return Promise.resolve(new Connect(deviceId, eventEmitter));
     });
   },
 
