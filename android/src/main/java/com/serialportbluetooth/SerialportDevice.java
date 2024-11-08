@@ -1,16 +1,13 @@
 package com.serialportbluetooth;
 
-import java.io.IOException;
-
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableMap;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
-import android.util.Log;
+import java.io.IOException;
 
 public class SerialportDevice implements SerialInputOutputManager.Listener {
-
   private static final String DataReceivedEvent = "serialportDataReceived";
 
   private int WRITE_WAIT_MILLIS = 200;
@@ -20,7 +17,6 @@ public class SerialportDevice implements SerialInputOutputManager.Listener {
   private EventSender sender;
   private boolean closed = false;
   private SerialInputOutputManager ioManager;
-
 
   public SerialportDevice(int deviceId, UsbSerialPort port,int readWaitMillis, int writeWaitMillis, EventSender sender) {
     this.deviceId = deviceId;
@@ -65,7 +61,6 @@ public class SerialportDevice implements SerialInputOutputManager.Listener {
         e.printStackTrace();
     }
   }
-
 
   public int getDeviceId() {
       return deviceId;
