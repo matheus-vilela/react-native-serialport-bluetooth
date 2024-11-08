@@ -2,5 +2,4 @@
   xmlns:android="http://schemas.android.com/apk/res/android"
   package="com.serialportbluetooth"
 >
-  <uses-permission android:name="com.sunmi.perm.CONTACTLESS_CARD" />
 </manifest>
