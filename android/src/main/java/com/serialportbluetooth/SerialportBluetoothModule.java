@@ -6,10 +6,10 @@ import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Build;
 
 import androidx.annotation.NonNull;
 
-import com.facebook.react.BuildConfig;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -25,41 +25,43 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.List;
+import java.lang.reflect.Method;
 
 @ReactModule(name = SerialportBluetoothModule.NAME)
-public class SerialportBluetoothModule extends ReactContextBaseJavaModule implements EventSender {
-  public static final String NAME = "SerialportBluetooth";
-  private static final String INTENT_ACTION_GRANT_USB = BuildConfig.LIBRARY_PACKAGE_NAME + ".GRANT_USB";
-  private final ReactApplicationContext reactContext;
-  private final Map<Integer, SerialportDevice> usbSerialPorts = new HashMap<Integer, SerialportDevice>();
+public class SerialportBluetoothModule extends ReactContextBaseJavaModule implements EventSender{
+public static final String NAME = "SerialportBluetooth";
+private static final String INTENT_ACTION_GRANT_USB = BuildConfig.LIBRARY_PACKAGE_NAME + ".GRANT_USB";
+private final ReactApplicationContext reactContext;
+private final Map<Integer, SerialportDevice> usbSerialPorts = new HashMap<Integer, SerialportDevice>();
+private SunmiRfidCardReader sunmiRfidCardReader = null;
 
-  public SerialportBluetoothModule(ReactApplicationContext reactContext) {
-    super(reactContext);
-    this.reactContext = reactContext;
-  }
+public SerialportBluetoothModule(ReactApplicationContext reactContext) {
+super(reactContext);
+this.reactContext = reactContext;
 
-  @Override
-  @NonNull
-  public String getName() {
-    return NAME;
-  }
+    if (this.isSunmiP2B()) {
+      this.sunmiRfidCardReader = new SunmiRfidCardReader(reactContext);
+      this.sunmiRfidCardReader.bindService();
+    }
 
-  @ReactMethod
-  public void list(Promise promise) {
-      WritableArray devices = Arguments.createArray();
-      try{
-        UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-        List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
-        HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
-        // for (UsbDevice driver : usbSerialDriverList) {
-        //     WritableMap d = Arguments.createMap();
-        //     d.putInt("deviceId", findDevice());
-        //     d.putInt("vendorId", driver.getVendorId());
-        //     d.putInt("productId", driver.getProductId());
-        //     devices.pushMap(d);
-        // }
+}
+
+@Override
+@NonNull
+public String getName() {
+return NAME;
+}
+
+@ReactMethod
+public void list(Promise promise) {
+WritableArray devices = Arguments.createArray();
+try{
+UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
+HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
+
         for (UsbSerialDriver driver : usbSerialDriverList) {
           WritableMap deviceData = Arguments.createMap();
           deviceData.putString("name", driver.getDevice().getDeviceName());
@@ -79,16 +81,17 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
       } catch (Exception e) {
         promise.resolve(devices);
       }
-  }
 
-  @ReactMethod
-  public void tryRequestPermission(int deviceId, Promise promise) {
-      UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-      UsbDevice device = findDevice(deviceId);
-      if (device == null) {
-          promise.reject("1", "device not found");
-          return;
-      }
+}
+
+@ReactMethod
+public void tryRequestPermission(int deviceId, Promise promise) {
+UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+UsbDevice device = findDevice(deviceId);
+if (device == null) {
+promise.reject("1", "device not found");
+return;
+}
 
       if (usbManager.hasPermission(device)) {
           System.out.println("has permission");
@@ -96,41 +99,64 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
           return;
       }
 
-      PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getCurrentActivity(), 0, new Intent(INTENT_ACTION_GRANT_USB), PendingIntent.FLAG_IMMUTABLE);
+    if (device != null && !usbManager.hasPermission(device)) {
+        try {
+            Method grantMethod = usbManager.getClass().getDeclaredMethod("grantPermission", UsbDevice.class);
+            grantMethod.setAccessible(true);
+            grantMethod.invoke(usbManager, device);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+      PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getCurrentActivity(), 0, new Intent(INTENT_ACTION_GRANT_USB), 0);
       usbManager.requestPermission(device, usbPermissionIntent);
       promise.resolve(0);
-  }
 
-  @ReactMethod
-  public void hasPermission(int deviceId, Promise promise) {
-      UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-      UsbDevice device = findDevice(deviceId);
-      if (device == null) {
-          promise.reject("1", "device not found");
-          return;
-      }
+}
+
+@ReactMethod
+public void hasPermission(int deviceId, Promise promise) {
+UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+UsbDevice device = findDevice(deviceId);
+if (device == null) {
+promise.reject("1", "device not found");
+return;
+}
+
+    if (!usbManager.hasPermission(device)) {
+        try {
+            Method grantMethod = usbManager.getClass().getDeclaredMethod("grantPermission", UsbDevice.class);
+            grantMethod.setAccessible(true);
+            grantMethod.invoke(usbManager, device);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
       promise.resolve(usbManager.hasPermission(device));
       return;
-  }
 
-  public void sendEvent(final String eventName, final WritableMap event) {
-    reactContext.runOnUiQueueThread(new Runnable() {
-        @Override
-        public void run() {
-            reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                .emit(eventName, event);
-        }
-    });
-  }
+}
 
-  @ReactMethod
-  public void open(int deviceId, int baudRate, int dataBits, int stopBits, int parity,int readWaitMillis, int writeWaitMillis, Promise promise) {
-      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
-      if (wrapper != null) {
-          promise.resolve(deviceId);
-          return;
-      }
+public void sendEvent(final String eventName, final WritableMap event) {
+reactContext.runOnUiQueueThread(new Runnable() {
+@Override
+public void run() {
+reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+.emit(eventName, event);
+}
+});
+}
+
+@ReactMethod
+public void open(int deviceId, int baudRate, int dataBits, int stopBits, int parity,int readWaitMillis, int writeWaitMillis, Promise promise) {
+SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+if (wrapper != null) {
+promise.resolve(deviceId);
+return;
+}
 
       UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
       UsbDevice device = findDevice(deviceId);
@@ -138,6 +164,16 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
           promise.reject("1", "device not found");
           return;
       }
+
+    if (device != null && !usbManager.hasPermission(device)) {
+        try {
+            Method grantMethod = usbManager.getClass().getDeclaredMethod("grantPermission", UsbDevice.class);
+            grantMethod.setAccessible(true);
+            grantMethod.invoke(usbManager, device);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
       UsbSerialDriver driver = UsbSerialProber.getDefaultProber().probeDevice(device);
       if (driver == null) {
@@ -152,7 +188,9 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
       UsbDeviceConnection connection = usbManager.openDevice(driver.getDevice());
       if(connection == null) {
           if (!usbManager.hasPermission(driver.getDevice())) {
-              promise.reject("4", "connection failed: permission denied");
+
+
+            promise.reject("4", "connection failed: permission denied");
           } else {
               promise.reject("5", "connection failed: open failed");
           }
@@ -174,15 +212,16 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
       wrapper = new SerialportDevice(deviceId, port, readWaitMillis, writeWaitMillis, this);
       usbSerialPorts.put(deviceId, wrapper);
       promise.resolve(deviceId);
-  }
 
-  @ReactMethod
-  public void send(int deviceId, String hexStr, Promise promise) {
-      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
-      if (wrapper == null) {
-          promise.reject("0", "device not open");
-          return;
-      }
+}
+
+@ReactMethod
+public void send(int deviceId, String hexStr, Promise promise) {
+SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+if (wrapper == null) {
+promise.reject("0", "device not open");
+return;
+}
 
       byte[] data = hexStringToByteArray(hexStr);
       try {
@@ -192,51 +231,66 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
           promise.reject("0", "send failed", e);
           return;
       }
-  }
 
-  @ReactMethod
-  public void close(int deviceId, Promise promise) {
-      SerialportDevice wrapper = usbSerialPorts.get(deviceId);
-      if (wrapper == null) {
-          promise.reject("7", "serial port not open or closed");
-          return;
-      }
+}
+
+@ReactMethod
+public void close(int deviceId, Promise promise) {
+SerialportDevice wrapper = usbSerialPorts.get(deviceId);
+if (wrapper == null) {
+promise.reject("7", "serial port not open or closed");
+return;
+}
 
       wrapper.close();
       usbSerialPorts.remove(deviceId);
       promise.resolve(null);
-  }
 
-  private UsbDevice findDevice(int deviceId) {
-    UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
-    for (UsbDevice device : usbManager.getDeviceList().values()) {
-        if (device.getDeviceId() == deviceId) {
-            return device;
-        }
-    }
+}
+
+private UsbDevice findDevice(int deviceId) {
+UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
+for (UsbDevice device : usbManager.getDeviceList().values()) {
+if (device.getDeviceId() == deviceId) {
+return device;
+}
+}
 
     return null;
-  }
 
-  public static byte[] hexStringToByteArray(String s) {
-    int len = s.length();
-    byte[] data = new byte[len / 2];
-    for (int i = 0; i < len; i += 2) {
-        data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-            + Character.digit(s.charAt(i + 1), 16));
-    }
-    return data;
-  }
+}
 
-  private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+public static byte[] hexStringToByteArray(String s) {
+int len = s.length();
+byte[] data = new byte[len / 2];
+for (int i = 0; i < len; i += 2) {
+data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
+}
+return data;
+}
 
-  public static String bytesToHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int j = 0; j < bytes.length; j++) {
-            int v = bytes[j] & 0xFF;
-            hexChars[j * 2] = HEX_ARRAY[v >>> 4];
-            hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
-        }
-        return new String(hexChars);
-  }
+private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
+
+public static String bytesToHex(byte[] bytes) {
+char[] hexChars = new char[bytes.length * 2];
+for (int j = 0; j < bytes.length; j++) {
+int v = bytes[j] & 0xFF;
+hexChars[j * 2] = HEX_ARRAY[v >>> 4];
+hexChars[j * 2 + 1] = HEX_ARRAY[v & 0x0F];
+}
+return new String(hexChars);
+}
+
+@ReactMethod
+public void readRfidCard(Promise promise) {
+if (!this.isSunmiP2B()) {
+promise.reject("500", "Not Sunmi P2 to read RFID via NFC device.");
+return;
+}
+this.sunmiRfidCardReader.searchCard(promise);
+}
+
+private boolean isSunmiP2B() {
+return Build.MODEL.equalsIgnoreCase("P2-B");
+}
 }
