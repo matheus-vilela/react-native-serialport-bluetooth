@@ -11,6 +11,15 @@
 - **Close Connections**: Safely terminate connections with devices.
 - **Handle Received Data**: Respond to data received from connected devices.
 
+## Compatible Devices
+
+This library supports USB to serial converter chips:
+
+- **FTDI** FT232R, FT232H, FT2232H, FT4232H, FT230X, FT231X, FT234XD
+- **Prolific** PL2303
+- **Silabs** CP2102, CP210\*
+- **Qinheng** CH340, CH341A, CH9102
+
 ## Installation
 
 Install the library using npm or yarn:
