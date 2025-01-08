@@ -1,6 +1,6 @@
 {
   "name": "react-native-serialport-bluetooth",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "comunicacao serialport e bluetooth para android",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
