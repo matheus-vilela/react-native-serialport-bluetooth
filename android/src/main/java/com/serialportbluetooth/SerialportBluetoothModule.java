@@ -7,6 +7,8 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 
+import android.os.Build;
+
 import androidx.annotation.NonNull;
 
 import com.facebook.react.BuildConfig;
@@ -27,6 +29,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.lang.reflect.Method;
 
 @ReactModule(name = SerialportBluetoothModule.NAME)
 public class SerialportBluetoothModule extends ReactContextBaseJavaModule implements EventSender {
@@ -53,13 +56,6 @@ public class SerialportBluetoothModule extends ReactContextBaseJavaModule implem
         UsbManager usbManager = (UsbManager) getCurrentActivity().getSystemService(Context.USB_SERVICE);
         List<UsbSerialDriver> usbSerialDriverList = UsbSerialProber.getDefaultProber().findAllDrivers(usbManager);
         HashMap<String, UsbDevice> usbDevices = usbManager.getDeviceList();
-        // for (UsbDevice driver : usbSerialDriverList) {
-        //     WritableMap d = Arguments.createMap();
-        //     d.putInt("deviceId", findDevice());
-        //     d.putInt("vendorId", driver.getVendorId());
-        //     d.putInt("productId", driver.getProductId());
-        //     devices.pushMap(d);
-        // }
         for (UsbSerialDriver driver : usbSerialDriverList) {
           WritableMap deviceData = Arguments.createMap();
           deviceData.putString("name", driver.getDevice().getDeviceName());
